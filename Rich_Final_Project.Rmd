@@ -1,0 +1,372 @@
+---
+title: "Rich Final Project"
+author: "Cameron Rich"
+date: "2024-05-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readr)
+library(ggrepel)
+```
+***
+## Introduction
+
+> In this project, I wanted to inquire into a line of thought on how gun policy materially impacts gun violence. In order to do that, I asked the question
+
+***
+
+## Variables
+
+### 1. Identification Variables
+
+#### **state**
+> State of the US (not including territories or DC)
+
+### 2. Numerical Variables
+
+#### **population**
+> State population as of 2020 census (per Census Bureau)
+
+#### **deaths**
+> Gun-related deaths in state in 2021 (per CDC)
+
+#### **deathRate** 
+> Rate of gun-related deaths per 100,000 of state population as of 2021 (per CDC)
+
+#### **estOwnRate**
+> State-level estimate of rate of gun ownership throughout households in 2016 (closest possible dataset, per RAND)
+
+#### **licenses** 
+> Number of federally-registered guns per state in 2021 (per ATF)
+
+### 3. Categorical Variable(s)
+
+#### **concealCarry** 
+>
+Broadly-examined type of concealed carry legislation:
+>
+0. Unrestricted
+1. Requires Permit
+>
+*(note: concealed carry is not against the law in any of the 50 states)*
+
+#### **openCarryHG**
+>
+Broadly-examined type of handgun open carry legislation:
+>
+0. Unrestricted
+1. Requires Permit
+2. Illegal
+
+#### **openCarryLG**
+>
+Broadly-examined type of long gun open carry legislation:
+>
+0. Unrestricted
+1. Requires Permit
+2. Illegal
+
+***
+## Hypotheses
+>More firearms in the state lead to more deaths in a significant manner, but ownership rate against death rate will show to be a more significant relationship due to being more representative of a population and its relationship with guns. I will use 95% confidence as the metric for both.
+
+>Open carry policy, given the assumption that open carry fundamentally alters the social dynamic of a situation by having a weapon in reach, potentially promoting more tense situations that lead to acts of gun violence, will be more significant an indicator of firearm mortality than concealed carry policy.
+
+***
+## Preprocessing
+
+```{r data preparation}
+data <- read_csv("gunStats2021.csv", show_col_types = FALSE)
+
+data$concealCarry <- fct_recode(factor(data$concealCarry),
+                                unrestricted = "0",
+                                permit = "1")
+data$openCarryHG <- fct_recode(factor(data$openCarryHG),
+                               unrestricted = "0",
+                               permit = "1",
+                               illegal = "2")
+data$openCarryLG <- fct_recode(factor(data$openCarryLG),
+                               unrestricted = "0",
+                               permit = "1",
+                               illegal = "2")
+```
+
+```{r secret prep, echo=FALSE}
+```
+***
+## Scatterplots
+
+### Death Rate by Total Deaths
+
+```{r rate by deaths, fig.width=10, fig.height=8}
+rate_by_deaths <- ggplot(data, aes(x = deaths, y = deathRate)) +
+  scale_x_continuous(breaks = seq(0, 
+                                  max(data$deaths), 
+                                  by = 500)) +
+  scale_y_continuous(breaks = seq(0, 
+                                  max(data$deathRate), 
+                                  by = 4)) +
+  geom_hline(yintercept = 0, color = "black", linewidth = 1) +
+  geom_vline(xintercept = 0, color = "black", linewidth = 1) +
+  geom_point(aes(colour = openCarryHG,
+                 shape = openCarryLG,
+                 fill = concealCarry),
+             show.legend = TRUE) +
+  scale_color_manual(values = c("red", "green", "blue"), 
+                     name = "Open Carry Policy (handguns)") +
+  scale_shape_manual(values = c(21, 24, 22), 
+                     name = "Open Carry Policy (long guns)") +
+  scale_fill_manual(values = c("white", "black"), 
+                    name = "Concealed Carry Policy",
+                    labels = c("unrestricted [white fill]", 
+                               "permit [black fill]")) +
+  geom_label_repel(aes(label = state),
+                   box.padding = 0.35, 
+                   point.padding = 0.5,
+                   min.segment.length = 0.1) +
+  theme_gray() +
+  labs(title = "2021 Per-Capita State Gun Deaths by Total State Gun Deaths",
+       x = "Gun Deaths in State (2021)",
+       y = "Gun Death Rate (per 100k in state)")
+
+print(rate_by_deaths)
+```
+
+#### Observations
+
+1. States that require handgun open carry permits seem to congregate in the bottom-left corner, of low amount of deaths and low death rate accounting for population.
+2. Unrestricted open carry handgun policy seems to signify greater death rate.
+
+### Death Rate by Population
+
+```{r rate by pop, fig.width=10, fig.height=8, warning=FALSE}
+rate_by_pop <- ggplot(data, aes(x = population, y = deathRate)) +
+  scale_x_log10() +
+  scale_y_continuous(breaks = seq(0, 
+                                  max(data$deathRate), 
+                                  by = 4)) +
+  geom_hline(yintercept = 0, color = "black", linewidth = 1) +
+  geom_vline(xintercept = 3e+05, color = "black", linewidth = 1) +
+  geom_point(aes(colour = openCarryHG,
+                 shape = openCarryLG,
+                 fill = concealCarry),
+             show.legend = TRUE) +
+  scale_color_manual(values = c("red", "green", "blue"), 
+                     name = "Open Carry Policy (handguns)") +
+  scale_shape_manual(values = c(21, 24, 22), 
+                     name = "Open Carry Policy (long guns)") +
+  scale_fill_manual(values = c("white", "black"), 
+                    name = "Concealed Carry Policy",
+                    labels = c("unrestricted [white fill]", 
+                               "permit [black fill]")) +
+  geom_label_repel(aes(label = state),
+                   box.padding = 0.35, 
+                   point.padding = 0.5,
+                   min.segment.length = 0.1) +
+  theme_gray() +
+  labs(title = "2021 Per-Capita State Gun Deaths by State Population",
+       x = "State Population (Census 2020)",
+       y = "Gun Death Rate (per 100k in state)")
+
+print(rate_by_pop)
+```
+
+#### Observations
+
+1. States without open carry handgun policies seem to skew having a bit more people on average than states without.
+
+***
+
+## Linear Regressions
+
+```{r deaths by licenses, fig.width=10, fig.height=8, warning=FALSE}
+model <- lm(licenses ~ deaths, data = data)
+model_summary <- summary(model)
+correlation <- cor(data$deaths, data$licenses, use = "complete.obs")
+r_squared <- model_summary$r.squared
+p_value <- coef(summary(model))["deaths", "Pr(>|t|)"]
+
+death_and_licenses <- ggplot(data, aes(x = deaths, y = licenses)) +
+  scale_y_log10() +
+  geom_point(aes(colour = openCarryHG,
+                 shape = openCarryLG,
+                 fill = concealCarry),
+             show.legend = TRUE) +
+    geom_smooth(method = "lm", se = TRUE, color = "yellow") +
+  scale_color_manual(values = c("red", "green", "blue"), 
+                     name = "Open Carry Policy (handguns)") +
+  scale_shape_manual(values = c(21, 24, 22), 
+                     name = "Open Carry Policy (long guns)") +
+  scale_fill_manual(values = c("white", "black"), 
+                    name = "Concealed Carry Policy",
+                    labels = c("unrestricted [white fill]", 
+                               "permit [black fill]")) +
+  geom_label_repel(aes(label = state),
+                   box.padding = 0.35, 
+                   point.padding = 0.5,
+                   min.segment.length = 0.1) +
+  theme_gray() +
+  labs(title = "2021 State Gun Deaths by Registered Firearms",
+       x = "Gun Deaths in State (2021)",
+       y = "Registered Firearms in state (per ATF)") +
+    annotate("text", x = Inf, y = 100000, 
+             label = sprintf("R = %.2f\nR² = %.2f\np = %.2g", 
+                             correlation, 
+                             r_squared, 
+                             p_value), 
+             hjust = 1.1, 
+             vjust = 1.1, 
+             size = 5, 
+             color = "blue")
+
+# Display the plot
+print(death_and_licenses)
+```
+
+```{r death and own rate, fig.width=10, fig.height=8}
+model <- lm(deathRate ~ estOwnRate, data = data)
+model_summary <- summary(model)
+correlation <- cor(data$estOwnRate, data$deathRate, use = "complete.obs")
+r_squared <- model_summary$r.squared
+p_value <- coef(summary(model))["estOwnRate", "Pr(>|t|)"]
+
+death_and_own_rate <- ggplot(data, aes(x = estOwnRate, y = deathRate)) +
+  geom_point(aes(colour = openCarryHG,
+                 shape = openCarryLG,
+                 fill = concealCarry),
+             show.legend = TRUE) +
+    geom_smooth(method = "lm", se = TRUE, color = "yellow") +
+  scale_color_manual(values = c("red", "green", "blue"), 
+                     name = "Open Carry Policy (handguns)") +
+  scale_shape_manual(values = c(21, 24, 22), 
+                     name = "Open Carry Policy (long guns)") +
+  scale_fill_manual(values = c("white", "black"), 
+                    name = "Concealed Carry Policy",
+                    labels = c("unrestricted [white fill]", 
+                               "permit [black fill]")) +
+  geom_label_repel(aes(label = state),
+                   box.padding = 0.35, 
+                   point.padding = 0.5,
+                   min.segment.length = 0.1) +
+  theme_gray() +
+  labs(title = "2021 Per-Capita State Gun Deaths by Estimated Ownership Rate",
+       x = "Estimated Gun Ownership Rate (%)",
+       y = "Gun Death Rate (per 100k in state)") +
+    annotate("text", x = Inf, y = 5, 
+             label = sprintf("R = %.2f\nR² = %.2f\np = %.2g", 
+                             correlation, 
+                             r_squared, 
+                             p_value), 
+             hjust = 1.1, 
+             vjust = 1.1, 
+             size = 5, 
+             color = "blue")
+
+# Display the plot
+print(death_and_own_rate)
+```
+
+#### Observations
+
+1. Both are statistically significant.
+2. Death/licenses has a more significant relationship by a magnitude of 8 and a slightly stronger relationship, disproving my broader initial hypothesis.
+
+***
+
+## ANOVA
+
+### Deaths
+
+```{r deaths ANOVA}
+death_model <- lm(deaths ~ openCarryHG + openCarryLG + concealCarry, data = data)
+anova_result <- anova(death_model)
+print(anova_result)
+```
+
+### Death Rate
+
+```{r death rate ANOVA}
+death_rate_model <- lm(deathRate ~ openCarryHG + openCarryLG + concealCarry, data = data)
+anova_result <- anova(death_rate_model)
+print(anova_result)
+```
+
+#### Visualization (given <0.05 p-value)
+```{r HG ANOVA vis}
+ggplot(data, aes(x = openCarryHG, y = deaths, fill = openCarryHG)) +
+  geom_boxplot() +
+  labs(title = "Gun Deaths by Open Carry Handgun Policy",
+       x = "Open Carry Handgun Policy",
+       y = "Gun Deaths (2021)")
+```
+
+```{r HG Rate ANOVA vis}
+ggplot(data, aes(x = openCarryHG, y = deathRate, fill = openCarryHG)) +
+  geom_boxplot() +
+  labs(title = "Gun Death Rate by Open Carry Handgun Policy",
+       x = "Open Carry Handgun Policy",
+       y = "Gun Death Rate (per 100k in state)")
+```
+
+### Observations
+
+1. Handgun open carry has approximately **1/580th** the P-value of concealed carry with regard to death rate.
+2. Long gun policy has a stark lack of impact on firearm mortality.
+3. Concealed carry has roughly the same significance to death and death rate, whereas handgun open carry, whilst significant in regards to deaths, jumps by a relative magnitude of three in its death rate significance.
+
+***
+
+## Discussion
+
+My first hypothesis was proven wrong. While both values were statistically significant, and both break the 95% confidence value, quantity is a more significant relationship than rate. As such, I will propose alternative hypotheses that may explain why this is:
+
+1. More people and more guns means more opportunities for altercations to take place. States with lower populations may not have the encounter rate of more-populated states.
+
+2. The ownership rate is an estimate, and may not be truly representative of the actual household firearm ownership rate.
+
+Of the categorical variables analyzed, it seems that the most significant correlation found is handgun open carry policy. This tracks with my hypothesis. I believe the reason for this is because open carrying a firearm is an implicit threat to everyone around you. The fact that one has and is displaying a weapon that can immediately extinguish a life causes people to act differently towards the wielder, which may lead to a higher rate of altercation.
+
+An alternative hypothesis for the reason behind it may be that people, who are allowed to and then subsequently choose to open carry firearms, like to look for excuses to justify said open possession of their firearm. A self-fulfilling prophecy, if one must.
+
+Regarding long guns, I have two working theories:
+
+1. Long gun policy could potentially be more of an arbitrary indicator regarding the more intangible gun *attitude* in a state. 
+
+```{r bitrary}
+long_not_hand <- data[data$openCarryHG != "unrestricted" &
+                        data$openCarryLG == "unrestricted", ]
+glimpse(long_not_hand)
+
+hand_not_long <- data[data$openCarryHG == "unrestricted" &
+                        data$openCarryLG != "unrestricted", ]
+
+glimpse(hand_not_long)
+```
+
+As seen in the data above, only four states have some form of restriction on one type of gun whilst also letting another type of gun go unrestricted in regards to open carry policy. This small sample set might not properly represent a cohesive separation between handgun restriction and long gun restriction.
+
+2. Long guns are more tedious to kill an individual with. Long guns tend to be built for a militarized setting, where you are expected to more often have gun in hand. Handguns are infinitely more effective at being *sidearms*, things that you reach for when you need to kill a single person but are bad with crowds. It logically follows that most mass shootings are carried out with long guns, whereas most individualized altercations are carried out with handguns.
+
+Concealed carry is also consistent with my hypothesis. I don't believe it is entirely insignificant, but it is somewhat skewed sharing the stage with open carry. Hypothetically, a comparison between a gunless regime and a regime merely barring open carry might show a more significant difference in mortality rate, but it bears markedly less material significance to the data than open carry handguns do.
+
+The last thing I want to note is the difference between open carry handguns' death rate and total death significance. This can probably be traced back to a deaths vs. population statistic, which I ultimately decided not to graph because it didn't say anything at all besides the obvious "more people = more deaths." That same heuristic, however, can be applied to the states with unrestricted open carry handgun policy skewing relatively lower population-wise compared to states that regulate it. 
+
+***
+
+## Sources
+
+>
+1. CDC data on firearm mortality by state.
+  i. https://www.cdc.gov/nchs/pressroom/sosmap/firearm_mortality/firearm.htm
+2. State-Level Estimates of Household Firearm Ownership (RAND, 2020)
+  i. https://www.rand.org/pubs/tools/TL354.html
+3. ATF list of federally registered guns by state.
+  i. https://www.atf.gov/resource-center/data-statistics
+4. Wikipedia overview of the broad-strokes categorization of state-level gun legislation.
+  i. https://en.wikipedia.org/wiki/Open_carry_in_the_United_States
+  ii. https://en.wikipedia.org/wiki/Concealed_carry_in_the_United_States
+5. Census Bureau 2020 Population and Housing State Data
+  i. https://www.census.gov/library/visualizations/interactive/2020-population-and-housing-state-data.html
